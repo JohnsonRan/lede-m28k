@@ -82,13 +82,15 @@ ppp_generic_init_config() {
 	proto_config_add_boolean persist
 	proto_config_add_int maxfail
 	proto_config_add_int holdoff
+	proto_config_add_boolean sourcefilter
+	proto_config_add_boolean delegate
 }
 
 ppp_generic_setup() {
 	local config="$1"; shift
 	local localip
 
-	json_get_vars ip6table demand keepalive keepalive_adaptive username password pppd_options pppname unnumbered persist maxfail holdoff peerdns
+	json_get_vars ip6table demand keepalive keepalive_adaptive username password pppd_options pppname unnumbered persist maxfail holdoff peerdns sourcefilter delegate
 
 	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_get_var ipv6 ipv6
 
@@ -133,6 +135,8 @@ ppp_generic_setup() {
 	[ "${keepalive_adaptive:-1}" -lt 1 ] && lcp_adaptive=""
 	[ -n "$connect" ] || json_get_var connect connect
 	[ -n "$disconnect" ] || json_get_var disconnect disconnect
+	[ "$sourcefilter" = "0" ] || sourcefilter=""
+	[ "$delegate" != "0" ] && delegate=""
 
 	proto_run_command "$config" /usr/sbin/pppd \
 		nodetach ipparam "$config" \
@@ -143,6 +147,8 @@ ppp_generic_setup() {
 		${autoipv6:+set AUTOIPV6=1} \
 		${ip6table:+set IP6TABLE=$ip6table} \
 		${peerdns:+set PEERDNS=$peerdns} \
+		${sourcefilter:+set NOSOURCEFILTER=1} \
+		${delegate:+set DELEGATE=0} \
 		nodefaultroute \
 		usepeerdns \
 		$demand $persist maxfail $maxfail \
@@ -231,16 +237,7 @@ proto_pppoe_setup() {
 	json_get_var padi_attempts padi_attempts
 	json_get_var padi_timeout padi_timeout
 
-#By 蝈蝈：并发拨号同步的前期准备
-	syncppp_option=""
-	[ "$(uci get syncdial.config.enabled)" -eq "1" ] && {
-		ppp_if_cnt=$(uci show network | grep -c "\.proto=\'pppoe\'$")
-		syncppp_option="syncppp $ppp_if_cnt"
-		shellsync $ppp_if_cnt 10
-	}
-
 	ppp_generic_setup "$config" \
-		$syncppp_option \
 		plugin pppoe.so \
 		${ac:+rp_pppoe_ac "$ac"} \
 		${service:+rp_pppoe_service "$service"} \
