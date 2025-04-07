@@ -22,7 +22,6 @@ PKG_CPE_ID:=cpe:/a:elfutils_project:elfutils
 
 PKG_FIXUP:=autoreconf
 PKG_INSTALL:=1
-PKG_USE_MIPS16:=1
 PKG_BUILD_DEPENDS:=!USE_GLIBC:argp-standalone
 
 include $(INCLUDE_DIR)/package.mk
@@ -87,9 +86,10 @@ CONFIGURE_VARS += \
 TARGET_CFLAGS += \
 	-D_GNU_SOURCE \
 	-Wno-unused-result \
-	-Wno-format-nonliteral
+	-Wno-format-nonliteral \
+	-Wno-error
 
-ifneq ($(filter $(GCC_MAJOR_VERSION),12 13),)
+ifneq ($(CONFIG_GCC_USE_VERSION_11),y)
 TARGET_CFLAGS += \
 	-Wno-error=use-after-free
 endif
